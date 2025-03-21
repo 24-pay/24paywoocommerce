@@ -168,6 +168,27 @@ function woo_24pay_gateway_init() {
                     'label'   => 'Enable 24-pay logs',
                     'default' => 'no'
                 ),
+
+                'language' => array(
+                    'title' => 'Language',
+                    'description' => 'If you choose specific language, the payment will always be displayed in this language!',
+                    'type' => 'select',
+                    'options' => array(
+                        "auto"=>"automatically (based on the language in the order)",
+                        "sk"=>"Slovenčina",
+                        "cz"=>"Čeština",
+                        "en"=>"English",
+                        "de"=>"Deutch",
+                        "fr"=>"Français",
+                        "it"=>"Italiano",
+                        "pl"=>"Polski",
+                        "hu"=>"Magyar",
+                        "es"=>"Español",
+                        "ro"=>"Română",
+                        "sl"=>"Slovenščina",
+                    ),
+                    'default' => 'auto'
+                ),
 				
 			) );
 		}
@@ -250,6 +271,9 @@ function woo_24pay_gateway_init() {
 		}
 
         public function get_current_lang_code(){
+            if($this->settings['language'] != "auto") {
+                return $this->settings['language'];
+            }
             $supported_lang_codes = array("cs", "de", "en", "es", "fr", "hu", "it", "pl", "ro", "sk");
             $lang = get_bloginfo('language');
             $lang_code = explode("-", $lang);
