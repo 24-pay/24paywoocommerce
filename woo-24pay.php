@@ -71,7 +71,7 @@ function woo_24pay_gateway_init() {
 			// Define user set variables
 			$this->title        = $this->get_option( 'title' );
 			$this->description  = $this->get_option( 'description' );
-			$this->instructions = $this->get_option( 'instructions', $this->description );
+//			$this->instructions = $this->get_option( 'instructions', $this->description );
 		  
 			// Actions
 			add_action('woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
@@ -271,7 +271,7 @@ function woo_24pay_gateway_init() {
 		}
 
         public function get_current_lang_code(){
-            if($this->settings['language'] != "auto") {
+            if(!empty($this->settings['language']) && $this->settings['language'] != "auto") {
                 return $this->settings['language'];
             }
             $supported_lang_codes = array("cs", "de", "en", "es", "fr", "hu", "it", "pl", "ro", "sk");
