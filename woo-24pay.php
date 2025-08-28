@@ -348,13 +348,20 @@ function woo_24pay_gateway_init() {
 		        	$order->add_order_note("Notification message received with Pending result");
 		        	$order->update_status('on-hold', '24-pay payment is pending. Payment status will be processed with next notification message.');
 		        }
-			else if($notification->result == 'AUTHORIZED')
+			    else if($notification->result == 'AUTHORIZED')
 		        {
                     		$this->write_log("Notification message received with AUTHORIZED result");
 
 		        	$order->add_order_note("Notification message received with AUTHORIZED result");
 		        	$order->update_status('on-hold', '24-pay payment is AUTHORIZED. Payment status will be processed by your action.');
 		        }
+                else if($notification->result == 'REVERSAL')
+                {
+                    $this->write_log("Notification message received with REVERSAL result");
+
+                    $order->add_order_note("Notification message received with REVERSAL result");
+                    $order->update_status('refunded', '24-pay payment is REVERSAL.');
+                }
 		        else
 		        {
                     $this->write_log("Notification message received with Fail result");
