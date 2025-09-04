@@ -162,6 +162,13 @@ function woo_24pay_gateway_init() {
 					'default' => 'no'
 				),
 
+                'save_transaction_email' => array(
+                    'title'   => 'Save transaction email',
+                    'type'    => 'checkbox',
+                    'label'   => 'Send offline payment link in case of no response or declined payment.',
+                    'default' => 'no'
+                ),
+
                 'enable_logs' => array(
                     'title'   => 'Enable/Disable logs',
                     'type'    => 'checkbox',
@@ -216,7 +223,8 @@ function woo_24pay_gateway_init() {
 
 	      $is_test = (!empty($this->settings['is_test']) && $this->settings['is_test']=='yes') ? true : false;
 		  $notify_client = (!empty($this->settings['notify_client']) && $this->settings['notify_client']=='yes') ? true : false;
-		  	
+		  $save_transaction_email = (!empty($this->settings['save_transaction_email']) && $this->settings['save_transaction_email']=='yes') ? true : false;
+
 //	      $language = 'SK';
 	      $language = $this->get_current_lang_code();
 	      $country = 'SVK';
@@ -255,6 +263,9 @@ function woo_24pay_gateway_init() {
 
 		  if ($notify_client)
 			$data['NotifyClient'] = $order->get_billing_email();
+
+          if ($save_transaction_email)
+              $data['SaveTransactionEmail'] = $order->get_billing_email();
 
 		  $dataValidator = new WOO_24pay_DataValidator();
 
