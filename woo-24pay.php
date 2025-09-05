@@ -196,6 +196,13 @@ function woo_24pay_gateway_init() {
                     ),
                     'default' => 'auto'
                 ),
+
+                'cart' => array(
+                    'title'   => 'Include cart & shipping',
+                    'type'    => 'checkbox',
+                    'label'   => 'Required only for the pay later payment method.',
+                    'default' => 'no'
+                ),
 				
 			) );
 		}
@@ -224,6 +231,7 @@ function woo_24pay_gateway_init() {
 	      $is_test = (!empty($this->settings['is_test']) && $this->settings['is_test']=='yes') ? true : false;
 		  $notify_client = (!empty($this->settings['notify_client']) && $this->settings['notify_client']=='yes') ? true : false;
 		  $save_transaction_email = (!empty($this->settings['save_transaction_email']) && $this->settings['save_transaction_email']=='yes') ? true : false;
+		  $cart = (!empty($this->settings['cart']) && $this->settings['cart']=='yes') ? true : false;
 
 //	      $language = 'SK';
 	      $language = $this->get_current_lang_code();
@@ -267,6 +275,9 @@ function woo_24pay_gateway_init() {
           if ($save_transaction_email)
               $data['SaveTransactionEmail'] = $order->get_billing_email();
 
+          if ($cart)
+              $data['Cart'] = $this->get_cart_json_base64($order);
+
 		  $dataValidator = new WOO_24pay_DataValidator();
 
 		  if ($dataValidator->validate($data)){
@@ -280,6 +291,42 @@ function woo_24pay_gateway_init() {
 		  }
 
 		}
+
+        function get_cart_json_base64( $order ) {
+            if ( ! $order || ! is_a( $order, 'WC_Order' ) ) {
+                return null;
+            }
+
+            $shipping_methods = $order->get_shipping_methods();
+            $deliveryName  = '';
+            $deliveryPrice = 0;
+
+            if ( ! empty( $shipping_methods ) ) {
+                $shipping_method = array_shift( $shipping_methods );
+                $deliveryName  = $shipping_method->get_name();
+                $deliveryPrice = $shipping_method->get_total();
+            }
+
+            $items = [];
+            foreach ( $order->get_items() as $item ) {
+                $product = $item->get_product();
+
+                $items[] = [
+                    'itemName'        => $item->get_name(),
+                    'itemDescription' => $product ? $product->get_short_description() : '',
+                    'quantity'        => $item->get_quantity(),
+                    'itemPrice'       => number_format( $item->get_total() / max(1, $item->get_quantity()), 2, '.', ''),
+                ];
+            }
+
+            $data = [
+                'deliveryName'  => $deliveryName,
+                'deliveryPrice' => number_format( $deliveryPrice, 2, '.', '' ),
+                'items'         => $items,
+            ];
+
+            return base64_encode( json_encode($data, JSON_UNESCAPED_UNICODE) );
+        }
 
         public function get_current_lang_code(){
             if(!empty($this->settings['language']) && $this->settings['language'] != "auto") {
