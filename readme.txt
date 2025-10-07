@@ -3,13 +3,15 @@
 
 For proper functionality on the lastest versions of WP disable PageBuilder on the checkout page, otherwise the payment method will not be visible.
 
-Current version 1.1.0
+Current version 1.1.1
 
-= Released  = [02.11.2022]
+= ver 1.1.1 = [05.09.2025]
+= ver 1.1.0  = [02.11.2022]
 = ver 1.0.1 = [08.10.2021]
 = ver 1.0.0 = [21.11.2018]
 
-= Last Time Tested [WC 8.6.1 WP 6.4.3]
+= Last Time Tested [WC 10.1.2 WP 6.8.3]
+= Recently Tested [WC 8.6.1 WP 6.4.3]
 = Recently Tested [WC 8.0.3 WP 6.3.0]
 = Recently Tested [WC 7.6.1 WP 6.2.0]
 = Recently Tested [WC 7.0.1 WP 6.1.0]
