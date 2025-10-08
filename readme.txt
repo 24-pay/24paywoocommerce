@@ -3,6 +3,10 @@
 
 For proper functionality on the lastest versions of WP disable PageBuilder on the checkout page, otherwise the payment method will not be visible.
 
+Supported order number plugins:
+    Custom Order Numbers for WooCommerce - https://wordpress.org/plugins/custom-order-numbers-for-woocommerce/
+    Sequential Order Numbers for WooCommerce - https://wordpress.org/plugins/woocommerce-sequential-order-numbers/
+
 Current version 1.1.1
 
 = ver 1.1.1 = [05.09.2025]
