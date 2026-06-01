@@ -4,7 +4,7 @@ Plugin Name: Woocommerce 24pay Payment gateway
 Plugin URI: http://www.24-pay.sk
 Description: 24pay Payment Gateway for WooCommerce e-shop.
 Author: 24pay
-Version: 1.1.1
+Version: 1.1.2
 Author URI: https://www.24-pay.sk
 License: MIT
 */
@@ -17,6 +17,7 @@ require_once( PLUGIN_PATH_24PAY . 'woo-24pay-signgenerator.php' );
 require_once( PLUGIN_PATH_24PAY . 'woo-24pay-datavalidator.php' );
 require_once( PLUGIN_PATH_24PAY . 'woo-24pay-formbuilder.php' );
 require_once( PLUGIN_PATH_24PAY . 'woo-24pay-nurlparser.php' );
+require_once( PLUGIN_PATH_24PAY . 'woo-24pay-orderresolver.php' );
 
 // Make sure WooCommerce is active
 if ( ! in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
@@ -340,33 +341,21 @@ function woo_24pay_gateway_init() {
             }
             return in_array($lang_code[0], $supported_lang_codes) ? $lang_code[0] : "en";
         }
-	    public function load_order_by_mstxnid($order_id)
+	    public function load_order_by_mstxnid( $order_id )
 	    {
-	      if(function_exists('ywson_get_order_id_by_order_number'))
-		$order_id = ywson_get_order_id_by_order_number($order_id);
-		    
-	      if(function_exists('wc_sequential_order_numbers'))
-	        $order_id = wc_sequential_order_numbers()->find_order_by_order_number($order_id);
-
-	      if(function_exists('wc_seq_order_number_pro'))
-	        $order_id = wc_seq_order_number_pro()->find_order_by_order_number($order_id);
-
-	      if(function_exists('alg_wc_custom_order_numbers')){
-   		$customOrder = new Alg_WC_Custom_Order_Numbers_Core();
-   		$order_id = $customOrder->add_order_number_to_tracking($order_id);
-	      } 
-		    
-	      return wc_get_order($order_id);
+	        $resolved_id = Order_Number_Resolver::resolve( $order_id );
+	        return $resolved_id ? wc_get_order( $resolved_id ) : false;
 	    }
 
 		public function process_rurl($msTxnId){
 			$order = $this->load_order_by_mstxnid($msTxnId);
-			$order->add_order_note("Client was successfully redirected");
 
 			$redirectTarget = home_url();
 
 			if($order!= false)
       		{
+                $order->add_order_note("Client was successfully redirected");
+
       			$signGenerator = new WOO_24pay_SignGenerator(array('Mid'=>$this->settings['mid']), $this->settings['key']);
       			$message = $_GET['MsTxnId'].$_GET['Amount'].$_GET['CurrCode'].$_GET['Result'];
       			if ($signGenerator->sign($message) == $_GET['Sign']){
@@ -376,6 +365,9 @@ function woo_24pay_gateway_init() {
       				wc_add_notice('INVALID REDIRECT SIGN!', 'error');
       			}
       		}
+            else {
+                $this->write_log("Unable to get Order ID! for "  . $msTxnId);
+            }
             $this->write_log("RURL: " . $redirectTarget);
       		wp_safe_redirect($redirectTarget);
         	die();
