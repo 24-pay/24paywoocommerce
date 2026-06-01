@@ -1,6 +1,6 @@
 # 24pay Platobná brána pre WooCommerce — Integračný manuál
 
-**Verzia:** 1.1.1
+**Verzia:** 1.1.2
 **Licencia:** MIT
 **Autor:** 24pay (https://www.24-pay.sk)
 **Posledné testovanie:** WC 10.8.1 / WP 7.0
