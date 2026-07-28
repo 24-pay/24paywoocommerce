@@ -1,6 +1,6 @@
 # 24pay Payment Gateway for WooCommerce — Integration Manual
 
-**Version:** 1.1.2
+**Version:** 1.1.3
 **License:** MIT
 **Author:** 24pay (https://www.24-pay.sk)
 **Last tested:** WC 10.8.1 / WP 7.0
@@ -251,7 +251,7 @@ The plugin declares compatibility with WooCommerce High-Performance Order Storag
 
 ## 12. Changelog
 
-### ver 1.1.2 — 2026-06-01
+### ver 1.1.3 — 2026-07-28
 - Alg Custom Order Numbers updated to v2.x filter-based API (removed deprecated `Alg_WC_Custom_Order_Numbers_Core`)
 - Added `Order_Number_Resolver` class with meta-key fallback and WP object cache (TTL 300 s)
 

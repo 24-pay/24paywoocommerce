@@ -4,7 +4,7 @@ Plugin Name: Woocommerce 24pay Payment gateway
 Plugin URI: http://www.24-pay.sk
 Description: 24pay Payment Gateway for WooCommerce e-shop.
 Author: 24pay
-Version: 1.1.2
+Version: 1.1.3
 Author URI: https://www.24-pay.sk
 License: MIT
 */
@@ -119,14 +119,6 @@ function woo_24pay_gateway_init() {
 					'desc_tip'    => true,
 				),
 				
-				'eshop' => array(
-					'title'       => 'EshopId',
-					'type'        => 'text',
-					'description' => 'This parameter was send to you via SMS after contract sing.',
-					'default'     => '11111111',
-					'desc_tip'    => true,
-				),
-				
 				'key' => array(
 					'title'       => 'Key',
 					'type'        => 'text',
@@ -135,19 +127,51 @@ function woo_24pay_gateway_init() {
 					'desc_tip'    => true,
 				),
 
-				'rurl' => array(
-				  'title' => 'RURL',
-				  'type' => 'text',
-				  'description' => 'Specify url to which customer will be redirected after payment.',
-				  'default' => get_site_url().'/24pay-rurl/',
-				),
+                'eshop' => array(
+                    'title'       => 'EUR EshopId',
+                    'type'        => 'text',
+                    'description' => 'This parameter was send to you via SMS after contract sing.',
+                    'default'     => '11111111',
+                    'desc_tip'    => true,
+                ),
 
-				'nurl' => array(
-				  'title' => 'NURL',
-				  'type' => 'text',
-				  'description' => 'Specify url to which you will receive notification message.',
-				  'default' => get_site_url().'/24pay-nurl/',
-				),
+                'eshop_czk' => array(
+                    'title'       => 'CZK EshopId',
+                    'type'        => 'text',
+                    'description' => 'This parameter was send to you via SMS after contract sing.',
+                    'default'     => '33333333',
+                    'desc_tip'    => true,
+                ),
+
+                'eshop_pln' => array(
+                    'title'       => 'PLN EshopId',
+                    'type'        => 'text',
+                    'description' => 'This parameter was send to you via SMS after contract sing.',
+                    'default'     => '11111111',
+                    'desc_tip'    => true,
+                ),
+
+                'eshop_huf' => array(
+                    'title'       => 'HUF EshopId',
+                    'type'        => 'text',
+                    'description' => 'This parameter was send to you via SMS after contract sing.',
+                    'default'     => '66666666',
+                    'desc_tip'    => true,
+                ),
+
+                'rurl' => array(
+                    'title' => 'RURL',
+                    'type' => 'text',
+                    'description' => 'Specify url to which customer will be redirected after payment.',
+                    'default' => get_site_url().'/24pay-rurl/',
+                ),
+
+                'nurl' => array(
+                    'title' => 'NURL',
+                    'type' => 'text',
+                    'description' => 'Specify url to which you will receive notification message.',
+                    'default' => get_site_url().'/24pay-nurl/',
+                ),
 
 				'notify_email' => array(
 				  'title' => 'Notify Email (optional)',
@@ -240,7 +264,7 @@ function woo_24pay_gateway_init() {
 
 	      $data = array(
 	        'Mid' => $this->settings['mid'],
-	        'EshopId' => $this->settings['eshop'],
+            'EshopId' => $this->get_eshop_id_by_currency(),
 	        'MsTxnId' => $order->get_order_number(),
 	        // Use option below if 3rd party order number plugin is used withou order load support in method load_order_by_mstxnid
 		//'MsTxnId' => $order->get_id(), 
@@ -292,6 +316,25 @@ function woo_24pay_gateway_init() {
 		  }
 
 		}
+
+        public function get_eshop_id_by_currency(){
+            $currAlphaCode = strtolower(get_woocommerce_currency());
+            $eshopIdSuffixConf = array(
+                'eur' => '',
+                'czk' => '_czk',
+                'pln' => '_pln',
+                'huf' => '_huf'
+            );
+
+            if(array_key_exists($currAlphaCode, $eshopIdSuffixConf)){
+                $suffix = $eshopIdSuffixConf[$currAlphaCode];
+                return $this->settings['eshop' . $suffix];
+            }
+
+            // fallback if an unsupported currency slips through
+            $this->write_log("Unsupported currency for EshopId lookup: " . $currAlphaCode);
+            return $this->settings['eshop'];
+        }
 
         function get_cart_json_base64( $order ) {
             if ( ! $order || ! is_a( $order, 'WC_Order' ) ) {
