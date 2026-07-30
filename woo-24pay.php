@@ -160,9 +160,30 @@ function woo_24pay_gateway_init() {
                 ),
 
                 'rurl' => array(
-                    'title' => 'RURL',
+                    'title' => 'EUR RURL',
                     'type' => 'text',
                     'description' => 'Specify url to which customer will be redirected after payment.',
+                    'default' => get_site_url().'/24pay-rurl/',
+                ),
+
+                'rurl_czk' => array(
+                    'title' => 'CZK RURL',
+                    'type' => 'text',
+                    'description' => 'Specify url to which customer will be redirected after payment (CZK).',
+                    'default' => get_site_url().'/24pay-rurl/',
+                ),
+
+                'rurl_pln' => array(
+                    'title' => 'PLN RURL',
+                    'type' => 'text',
+                    'description' => 'Specify url to which customer will be redirected after payment (PLN).',
+                    'default' => get_site_url().'/24pay-rurl/',
+                ),
+
+                'rurl_huf' => array(
+                    'title' => 'HUF RURL',
+                    'type' => 'text',
+                    'description' => 'Specify url to which customer will be redirected after payment (HUF).',
                     'default' => get_site_url().'/24pay-rurl/',
                 ),
 
@@ -278,7 +299,7 @@ function woo_24pay_gateway_init() {
 	        'Timestamp' => date("Y-m-d H:i:s"),
 	        'LangCode' => $language,
 	        'RedirectSign' => 'true',
-	        'RURL' => $this->settings['rurl'],
+	        'RURL' => $this->get_rurl_by_currency(),
 	        'NURL' => $this->settings['nurl'],
 	        'Debug' => 'true',
 	      );
@@ -334,6 +355,32 @@ function woo_24pay_gateway_init() {
             // fallback if an unsupported currency slips through
             $this->write_log("Unsupported currency for EshopId lookup: " . $currAlphaCode);
             return $this->settings['eshop'];
+        }
+
+        public function get_rurl_by_currency(){
+            $currAlphaCode = strtolower(get_woocommerce_currency());
+            $rurlSuffixConf = array(
+                'eur' => '',
+                'czk' => '_czk',
+                'pln' => '_pln',
+                'huf' => '_huf'
+            );
+
+            if(array_key_exists($currAlphaCode, $rurlSuffixConf)){
+                $suffix = $rurlSuffixConf[$currAlphaCode];
+                $rurlKey = 'rurl' . $suffix;
+                if (!empty($this->settings[$rurlKey])) {
+                    return $this->settings[$rurlKey];
+                }
+            } else {
+                $this->write_log("Unsupported currency for RURL lookup: " . $currAlphaCode);
+            }
+
+            if (!empty($this->settings['rurl'])) {
+                return $this->settings['rurl'];
+            }
+
+            return get_site_url().'/24pay-rurl/';
         }
 
         function get_cart_json_base64( $order ) {

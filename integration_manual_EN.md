@@ -54,10 +54,13 @@ Provided by 24pay after signing the merchant contract (delivered via SMS).
 
 ### 4.3 URLs
 
-| Setting | Description |
-|---------|-------------|
-| RURL    | Return URL — the customer is redirected here after payment. **Must be registered with 24pay.** Default: `{site_url}/24pay-rurl/` |
-| NURL    | Notification URL — 24pay sends a POST XML notification here to update the order status. **Must be registered with 24pay.** Default: `{site_url}/24pay-nurl/` |
+| Setting  | Description |
+|----------|-------------|
+| EUR RURL | Return URL for EUR payments — customer is redirected here after payment. **Must be registered with 24pay.** Default: `{site_url}/24pay-rurl/` |
+| CZK RURL | Return URL for CZK payments. **Must be registered with 24pay.** Default: `{site_url}/24pay-rurl/` |
+| PLN RURL | Return URL for PLN payments. **Must be registered with 24pay.** Default: `{site_url}/24pay-rurl/` |
+| HUF RURL | Return URL for HUF payments. **Must be registered with 24pay.** Default: `{site_url}/24pay-rurl/` |
+| NURL     | Notification URL — 24pay sends a POST XML notification here to update the order status. **Must be registered with 24pay.** Default: `{site_url}/24pay-nurl/` |
 
 > ⚠️ The RURL and NURL values **must exactly match** the URLs registered in the 24pay merchant portal, including the trailing slash and the http/https scheme.
 > The plugin does **not** use WordPress rewrite rules — it matches the raw request URI directly.

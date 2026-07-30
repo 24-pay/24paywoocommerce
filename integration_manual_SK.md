@@ -56,7 +56,10 @@ Poskytnuté spoločnosťou 24pay po podpísaní obchodnej zmluvy (doručené SMS
 
 | Nastavenie | Popis |
 |------------|-------|
-| RURL       | Návratová URL — zákazník je sem presmerovaný po platbe. **Musí byť zaregistrovaná v 24pay.** Predvolené: `{site_url}/24pay-rurl/` |
+| EUR RURL   | Návratová URL pre platby v EUR — zákazník je sem presmerovaný po platbe. **Musí byť zaregistrovaná v 24pay.** Predvolené: `{site_url}/24pay-rurl/` |
+| CZK RURL   | Návratová URL pre platby v CZK. **Musí byť zaregistrovaná v 24pay.** Predvolené: `{site_url}/24pay-rurl/` |
+| PLN RURL   | Návratová URL pre platby v PLN. **Musí byť zaregistrovaná v 24pay.** Predvolené: `{site_url}/24pay-rurl/` |
+| HUF RURL   | Návratová URL pre platby v HUF. **Musí byť zaregistrovaná v 24pay.** Predvolené: `{site_url}/24pay-rurl/` |
 | NURL       | Notifikačná URL — 24pay sem posiela POST XML notifikáciu na aktualizáciu stavu objednávky. **Musí byť zaregistrovaná v 24pay.** Predvolené: `{site_url}/24pay-nurl/` |
 
 > ⚠️ Hodnoty RURL a NURL **musia presne zodpovedať** URL adresám zaregistrovaným v portáli 24pay, vrátane lomky na konci a schémy http/https.

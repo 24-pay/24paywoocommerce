@@ -1,6 +1,6 @@
 == 24pay Payment Gateway for WooCommerce ==
 
-Version: 1.1.3
+Version: 1.1.4
 License: MIT
 Author: 24pay (https://www.24-pay.sk)
 Tested: WC 10.8.1 / WP 7.0
@@ -52,10 +52,13 @@ Supports card payments, bank transfers, and the "pay later" method.
 
 === URLs ===
 
-| Setting | Description |
-|---------|-------------|
-| RURL    | Return URL — the customer is redirected here after payment. **Must be registered with 24pay.** Default: `{site_url}/24pay-rurl/` |
-| NURL    | Notification URL — 24pay sends a POST XML notification here to update the order status. **Must be registered with 24pay.** Default: `{site_url}/24pay-nurl/` |
+| Setting  | Description |
+|----------|-------------|
+| EUR RURL | Return URL for EUR payments. Customer is redirected here after payment. **Must be registered with 24pay.** Default: `{site_url}/24pay-rurl/` |
+| CZK RURL | Return URL for CZK payments. **Must be registered with 24pay.** Default: `{site_url}/24pay-rurl/` |
+| PLN RURL | Return URL for PLN payments. **Must be registered with 24pay.** Default: `{site_url}/24pay-rurl/` |
+| HUF RURL | Return URL for HUF payments. **Must be registered with 24pay.** Default: `{site_url}/24pay-rurl/` |
+| NURL     | Notification URL — 24pay sends a POST XML notification here to update the order status. **Must be registered with 24pay.** Default: `{site_url}/24pay-nurl/` |
 
 > ⚠️ The RURL and NURL values set here **must exactly match** the URLs registered in the 24pay merchant portal.
 > The plugin does NOT use WordPress rewrite rules — it matches the raw request URI directly.
@@ -165,6 +168,7 @@ The plugin declares compatibility with WooCommerce High-Performance Order Storag
 
 == Changelog ==
 
+= ver 1.1.4 = [30.07.2026]
 = ver 1.1.3 = [28.07.2026]
 = ver 1.1.2 = [01.06.2026]
 = ver 1.1.1 = [05.09.2025]
