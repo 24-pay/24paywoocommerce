@@ -4,7 +4,7 @@ Plugin Name: Woocommerce 24pay Payment gateway
 Plugin URI: http://www.24-pay.sk
 Description: 24pay Payment Gateway for WooCommerce e-shop.
 Author: 24pay
-Version: 1.1.3
+Version: 1.1.4
 Author URI: https://www.24-pay.sk
 License: MIT
 */

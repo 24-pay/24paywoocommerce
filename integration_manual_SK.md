@@ -1,6 +1,6 @@
 # 24pay Platobná brána pre WooCommerce — Integračný manuál
 
-**Verzia:** 1.1.3
+**Verzia:** 1.1.4
 **Licencia:** MIT
 **Autor:** 24pay (https://www.24-pay.sk)
 **Posledné testovanie:** WC 10.8.1 / WP 7.0
@@ -253,6 +253,10 @@ Plugin deklaruje kompatibilitu s WooCommerce High-Performance Order Storage (HPO
 ---
 
 ## 12. Changelog
+
+### ver 1.1.4 — 2026-07-30
+- Pridané samostatné RURL nastavenia podľa meny (EUR/CZK/PLN/HUF)
+- Pridaný výber RURL podľa meny v `payment_form()` cez `get_rurl_by_currency()`
 
 ### ver 1.1.3 — 2026-07-28
 - Alg Custom Order Numbers aktualizovaný na v2.x filter API; zachovaná spätná kompatibilita s v1.x

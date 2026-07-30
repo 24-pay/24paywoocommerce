@@ -1,6 +1,6 @@
 # 24pay Payment Gateway for WooCommerce — Integration Manual
 
-**Version:** 1.1.3
+**Version:** 1.1.4
 **License:** MIT
 **Author:** 24pay (https://www.24-pay.sk)
 **Last tested:** WC 10.8.1 / WP 7.0
@@ -253,6 +253,10 @@ The plugin declares compatibility with WooCommerce High-Performance Order Storag
 ---
 
 ## 12. Changelog
+
+### ver 1.1.4 — 2026-07-30
+- Added dedicated RURL settings per currency (EUR/CZK/PLN/HUF)
+- Added currency-based RURL selection in `payment_form()` via `get_rurl_by_currency()`
 
 ### ver 1.1.3 — 2026-07-28
 - Alg Custom Order Numbers updated to v2.x filter-based API (removed deprecated `Alg_WC_Custom_Order_Numbers_Core`)
