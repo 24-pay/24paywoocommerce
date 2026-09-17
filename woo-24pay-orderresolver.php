@@ -27,10 +27,19 @@ class Order_Number_Resolver
     /**
      * Main method — returns the internal WC order ID for any custom order number.
      *
+     * Includes a short retry/backoff loop so that asynchronous notifications
+     * which might arrive before the order is fully committed/visible in the
+     * database (e.g. server-to-server webhooks racing with order creation)
+     * get a chance to resolve successfully instead of failing immediately.
+     * For synchronous calls the order is found on the first attempt, so the
+     * retry loop never triggers and adds no overhead.
+     *
      * @param mixed $order_number
+     * @param int   $retries   number of extra attempts after the first one
+     * @param int   $delay_ms  delay between attempts, in milliseconds
      * @return int|false
      */
-    public static function resolve( $order_number )
+    public static function resolve( $order_number, $retries = 3, $delay_ms = 300 )
     {
         if ( empty( $order_number ) ) return false;
 
@@ -38,13 +47,20 @@ class Order_Number_Resolver
         $cached    = wp_cache_get( $cache_key, '24pay' );
         if ( $cached !== false ) return (int) $cached;
 
-        $order_id = self::try_plugins( $order_number );
-        if ( ! $order_id ) $order_id = self::try_meta_keys( $order_number );
-        if ( ! $order_id ) $order_id = self::try_direct( $order_number );
+        for ( $attempt = 0; $attempt <= $retries; $attempt++ ) {
 
-        if ( $order_id ) {
-            wp_cache_set( $cache_key, $order_id, '24pay', 300 );
-            return (int) $order_id;
+            $order_id = self::try_plugins( $order_number );
+            if ( ! $order_id ) $order_id = self::try_direct( $order_number );
+            if ( ! $order_id ) $order_id = self::try_meta_keys( $order_number );
+
+            if ( $order_id ) {
+                wp_cache_set( $cache_key, $order_id, '24pay', 300 );
+                return (int) $order_id;
+            }
+
+            if ( $attempt < $retries ) {
+                usleep( $delay_ms * 1000 );
+            }
         }
 
         return false;

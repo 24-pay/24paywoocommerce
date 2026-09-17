@@ -9,6 +9,7 @@ if(!class_exists('WOO_24pay_NurlParser'))
     public $parsed;
     public $result;
     public $msTxnId;
+    public $pspTxnId;
 
     private $mid;
     private $key;
@@ -23,7 +24,6 @@ if(!class_exists('WOO_24pay_NurlParser'))
     private $amount;
     private $country;
     private $currency;
-    private $pspTxnId;
     private $timestamp;
     private $creditCard;
     private $pspCategory;

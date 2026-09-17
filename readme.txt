@@ -1,6 +1,6 @@
 == 24pay Payment Gateway for WooCommerce ==
 
-Version: 1.1.4
+Version: 1.1.7
 License: MIT
 Author: 24pay (https://www.24-pay.sk)
 Tested: WC 10.8.1 / WP 7.0
@@ -167,6 +167,14 @@ The plugin declares compatibility with WooCommerce High-Performance Order Storag
 ---
 
 == Changelog ==
+
+= ver 1.1.7 = [17.09.2026]
+- Fixed: NURL notification processing could take up to ~20 seconds even though the gateway received its acknowledgement in ~500ms. Root cause: the actual order status update ran as an Action Scheduler background job, which depends on WP-Cron being triggered (via a loopback HTTP request) - this "pickup delay" alone could take several seconds, and much longer under load or when a security plugin/firewall throttles loopback requests. `process_nurl()` now responds "OK" to the gateway via `fastcgi_finish_request()` (or `litespeed_finish_request()` on LiteSpeed) and then continues processing the notification in the very same PHP request/process, completely bypassing the WP-Cron/Action Scheduler round-trip. Falls back to the previous Action Scheduler based background processing on servers where these functions are unavailable (e.g. classic mod_php).
+- Fixed: the "payment is being processed..." notice could keep showing (and the page kept auto-refreshing) indefinitely - for up to 10 minutes - even after the NURL notification had already been fully processed and the order status updated. Root cause: a race condition between the RURL redirect (customer's browser) and the NURL notification (server-to-server), both of which can run as concurrent requests for the same order. `process_rurl()` no longer re-arms the "awaiting notification" flag once the order has reached a terminal non-paid status (`failed`/`cancelled`), and `apply_notification_result()` now performs a final, fresh re-check to reliably clear the flag even if it was concurrently (re-)written by an in-flight RURL request.
+
+= ver 1.1.6 = [17.09.2026]
+- Fixed: the "payment is being processed..." notice on the order-received/view-order pages was silently never showing up. Root cause: `Woo_24pay_Gateway` gets instantiated more than once per request in practice (once by WooCommerce itself when it loads the list of available payment gateways, and once more by this plugin's own `init`-hooked listener, which needs an instance to detect RURL/NURL requests on every request). Each instantiation's constructor re-registered the SAME WordPress hooks, so `woocommerce_before_thankyou` / `woocommerce_thankyou_24pay_gateway` fired twice, opening two nested output buffers - the second `ob_end_clean()` call discarded the notice the first call had just printed. Hook registration is now guarded to happen only once per request, regardless of how many times the class is instantiated.
+- Fixed: after a failed payment followed by a retry, the customer could be left seeing the *stale* result of the previous, already-failed attempt forever if the NURL notification for the new attempt was delayed or lost. RURL's own signed "Result" parameter is now used to immediately reflect a definitive negative (non-OK) outcome on the order, instead of relying solely on the asynchronous NURL notification. Successful/pending outcomes still require NURL confirmation before the order is completed.
 
 = ver 1.1.4 = [30.07.2026]
 = ver 1.1.3 = [28.07.2026]

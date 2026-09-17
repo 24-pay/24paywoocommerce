@@ -1,6 +1,6 @@
 # 24pay Payment Gateway for WooCommerce — Integration Manual
 
-**Version:** 1.1.4
+**Version:** 1.1.7
 **License:** MIT
 **Author:** 24pay (https://www.24-pay.sk)
 **Last tested:** WC 10.8.1 / WP 7.0
@@ -21,6 +21,7 @@ Supports card payments, bank transfers, and the "pay later" method.
 - PHP 7.2+ (PHP 8.x supported)
 - OpenSSL extension (for AES-256-CBC signing)
 - A valid 24pay merchant contract (Mid, Key, EshopId)
+- Action Scheduler (bundled with WooCommerce) is used for background NURL processing — no separate installation required. If unavailable, the plugin falls back to synchronous processing automatically.
 
 ---
 
@@ -103,7 +104,51 @@ Checkout → process_payment() → WC order-pay page
 
 ---
 
-## 6. Order Status Mapping
+## 6. NURL Notification Processing (Reliability & Idempotency)
+
+Since version 1.1.5, NURL notification handling has been hardened to work correctly regardless of whether the gateway delivers the notification synchronously (a single delivery right after the transaction) or asynchronously (server-to-server, possibly retried, delayed, duplicated, or delivered out of order).
+
+### 6.1 Fast acknowledgement (no more slow responses)
+Previously, the plugin fully processed the notification (including `payment_complete()`, order emails, stock changes and any third-party hooks) before responding to the gateway. On busy stores this could make the NURL response take many seconds, which can cause the gateway to time out and retry.
+
+Since version 1.1.5, `process_nurl()` only performs fast, cheap steps synchronously (signature validation, order lookup, duplicate check) and responds immediately, handing off the actual order status update to a background job.
+
+As of version 1.1.7, that background processing is faster and more reliable still: instead of waiting for Action Scheduler to "pick up" the job via WP-Cron (which requires a separate HTTP request and, in practice, adds a delay of several seconds - much more under load or when a security plugin/firewall throttles loopback requests), the plugin now responds `OK` to the gateway directly via `fastcgi_finish_request()` (or `litespeed_finish_request()` on LiteSpeed hosting) - which closes the HTTP connection immediately - and then continues processing the notification (order status update, emails, stock) **in that very same PHP request**. The entire flow (acknowledgement + processing) therefore typically completes in well under a second, with no dependency on WP-Cron or Action Scheduler at all.
+
+These functions (`fastcgi_finish_request`/`litespeed_finish_request`) are available on the vast majority of modern hosting environments (PHP-FPM, LiteSpeed). If unavailable (e.g. classic mod_php), the plugin automatically falls back to the previous Action Scheduler based background processing - no functionality is lost, only the immediate-processing benefit.
+
+### 6.2 Idempotency (duplicate notifications)
+Every notification is uniquely identified by its `PspTxnId` + `Result`. Before applying it, the plugin checks a small history stored in the order's own metadata (`_24pay_processed_notifications`, capped at the last 20 entries). If the exact same notification was already applied, it is acknowledged (`OK`) without being processed again — this protects against duplicate deliveries and gateway retries.
+
+No custom database table is used for this — it relies entirely on WooCommerce order meta (fully compatible with both legacy post-based storage and HPOS) and WordPress's own `wp_options` table for the per-order lock (see 6.3), so there is nothing extra to install, migrate, or clean up on uninstall.
+
+### 6.3 Concurrency protection (per-order lock)
+If two notifications for the same order arrive at (nearly) the same time, only one is processed at a time. This uses an atomic WordPress option-based lock: `add_option()` relies on the UNIQUE index on `wp_options.option_name`, so it is atomic even without an external object cache (Redis/Memcached). A stale lock (e.g. left behind by a crashed request) is automatically reclaimed after 20 seconds. If a notification cannot acquire the lock, the plugin responds `FAIL` so the gateway retries later — this never causes data loss.
+
+### 6.4 Out-of-order protection (state machine)
+Notifications carry a "priority" based on how final their result is:
+
+```
+PENDING (1) < AUTHORIZED (2) < FAIL (3) < REVERSAL (4) < OK (5)
+```
+
+If a notification with a lower priority arrives after one with a higher priority was already applied (e.g. a delayed `PENDING` arriving after `OK` was already processed), it is ignored and the order status is **not** moved backwards. The last applied result is stored in order meta `_24pay_last_result`.
+
+### 6.5 Order resolver retry (async-safe lookups)
+`Order_Number_Resolver::resolve()` retries up to 3 times (300 ms apart) before giving up, in case a notification arrives before the order is fully committed/visible in the database. This adds no overhead for the normal case, since the order is found on the first attempt.
+
+### 6.6 RURL/NURL race protection ("payment is being processed" no longer gets stuck)
+The customer's browser (RURL, redirect back from the gateway) and the server-to-server notification (NURL) can run as two concurrent requests for the same order. For safety, `process_rurl()` sets/refreshes an "awaiting notification" flag (`_24pay_awaiting_notification`) so the order-received/view-order pages keep showing "payment is being processed..." until the NURL notification delivers a definitive result.
+
+As of version 1.1.7, this is hardened against two kinds of race:
+- `process_rurl()` no longer re-arms this flag once the order has already reached a terminal non-paid status (`failed`/`cancelled`) - i.e. once a NURL notification with a negative result has already been applied, a repeat RURL hit (e.g. from a page refresh) will not turn the flag back on.
+- `apply_notification_result()` now performs one final, fresh re-check at the very end of processing and clears the flag again if needed. This handles the case where a concurrent RURL request wrote the flag while the NURL request was still executing - the order object in the NURL request had already loaded its metadata into memory before RURL's write happened, so the original `delete_meta_data()` call had nothing to act on and was a no-op for that entry.
+
+Without this fix, the flag (and therefore the endless "payment is being processed..." auto-refresh loop) could remain set for up to `AWAITING_NOTIFICATION_TIMEOUT` (10 minutes) even though the order had long since been correctly processed.
+
+---
+
+## 7. Order Status Mapping
 
 | 24pay result  | WooCommerce order status |
 |---------------|--------------------------|
@@ -115,7 +160,7 @@ Checkout → process_payment() → WC order-pay page
 
 ---
 
-## 7. Supported Order Number Plugins
+## 8. Supported Order Number Plugins
 
 The plugin automatically detects and supports these third-party order number plugins:
 
@@ -142,13 +187,13 @@ If no plugin is detected, the resolver (`Order_Number_Resolver`) falls back to:
 
 ---
 
-## 8. Adding Support for Other Plugins
+## 9. Adding Support for Other Plugins
 
-If your store uses an order number plugin not listed in Section 7, you can add support without modifying the 24pay plugin code.
+If your store uses an order number plugin not listed in Section 8, you can add support without modifying the 24pay plugin code.
 
 You need to know the meta key your plugin uses to store the custom order number in the database. You can find this from the plugin's support documentation or by running the debug snippet below.
 
-### 8.1 Option A — Add a meta key via functions.php
+### 9.1 Option A — Add a meta key via functions.php
 
 Add the following code to your theme's `functions.php` or a custom plugin:
 
@@ -159,9 +204,9 @@ add_filter( '24pay_order_number_meta_keys', function( array $keys ): array {
 } );
 ```
 
-> **Note:** Replace `_your_plugin_meta_key` with the actual meta key used by your plugin. See Section 8.3 on how to find it.
+> **Note:** Replace `_your_plugin_meta_key` with the actual meta key used by your plugin. See Section 9.3 on how to find it.
 
-### 8.2 Option B — Built-in compatibility from your plugin
+### 9.2 Option B — Built-in compatibility from your plugin
 
 If you are a plugin developer and want to ship built-in compatibility with 24pay, add the following to your plugin:
 
@@ -187,7 +232,7 @@ class My_Plugin_24pay_Compat {
 add_action( 'plugins_loaded', [ 'My_Plugin_24pay_Compat', 'init' ] );
 ```
 
-### 8.3 How to find your plugin's meta key
+### 9.3 How to find your plugin's meta key
 
 If you don't know which meta key your plugin uses, add this temporary debug snippet to `functions.php` and open any order in the WooCommerce admin:
 
@@ -209,13 +254,13 @@ Look for the meta key that contains your custom order number. Once found, use it
 
 ---
 
-## 9. HPOS Compatibility
+## 10. HPOS Compatibility
 
 The plugin declares compatibility with WooCommerce High-Performance Order Storage (HPOS / custom_order_tables) via `FeaturesUtil::declare_compatibility()` on the `before_woocommerce_init` hook.
 
 ---
 
-## 10. File Structure
+## 11. File Structure
 
 | File | Class | Role |
 |------|-------|------|
@@ -228,31 +273,55 @@ The plugin declares compatibility with WooCommerce High-Performance Order Storag
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
-### 11.1 Payment method not visible at checkout
+### 12.1 Payment method not visible at checkout
 → Disable any page builder plugin on the checkout page (Elementor, Divi, etc.).
 
-### 11.2 Order status not updated after payment
+### 12.2 Order status not updated after payment
 → Check that the NURL registered with 24pay **exactly** matches the NURL setting (including trailing slash and http/https scheme).
 → Enable logs and inspect `log.txt` in the plugin directory.
+→ On servers running PHP-FPM or LiteSpeed (i.e. almost everywhere), as of v1.1.7 the order status is updated directly within the same request as the NURL notification - there is no dependency on WP-Cron at all. If it still doesn't update, check **WooCommerce → Status → Scheduled Actions** for a stuck/failed `woo_24pay_process_notification` action (this would mean the server doesn't support `fastcgi_finish_request()`/`litespeed_finish_request()` and the plugin fell back to Action Scheduler) - in that case, verify WP-Cron is running (`DISABLE_WP_CRON` not set to `true`, or a real server cron is configured to call `wp-cron.php`).
 
-### 11.3 Invalid sign error on RURL
+### 12.3 NURL response takes long / gateway keeps retrying
+→ This was a known issue prior to v1.1.5, where the plugin waited for the full order update (including emails and hooks) before responding. As of v1.1.5, the response is sent immediately after validating the notification; the actual update runs in the background. As of v1.1.7, on most hosting (PHP-FPM/LiteSpeed) the actual order status update itself also runs practically instantly (within the same request), so the entire flow (acknowledgement + status update) should take well under a second. Make sure you are running v1.1.7 or later.
+
+### 12.3.1 "Payment is being processed..." never stops, even though the notification was already processed
+→ This was a known race condition between RURL (customer returning from the gateway) and NURL (server-to-server notification), fixed in v1.1.7 - see Section 6.6. Make sure you are running v1.1.7 or later. If the issue persists on this version, enable logs and check whether `log.txt` contains the line `Cleared a concurrently re-armed '_24pay_awaiting_notification' flag...` (confirms the fix engaged) - if it doesn't appear and the flag still won't clear, contact support with your `log.txt` attached.
+
+### 12.4 Invalid sign error on RURL
 → Verify the `Key` (64-char hex) and `Mid` settings match those provided by 24pay exactly.
 
-### 11.4 Order not found after payment (NURL / RURL)
-→ If you use a custom order number plugin, confirm it is one of the supported plugins listed in section 7.
-→ If not, add your meta key as described in Section 8.
+### 12.5 Order not found after payment (NURL / RURL)
+→ If you use a custom order number plugin, confirm it is one of the supported plugins listed in section 8.
+→ If not, add your meta key as described in Section 9.
 → For Alg Custom Order Numbers, both **v1.x and v2.x** are supported.
 
-### 11.5 Log file
+### 12.6 Log file
 → Located at `wp-content/plugins/24paywoocommerce/log.txt`.
 → Enable via **Settings → Enable logs**.
 → **Never commit this file to version control.**
 
 ---
 
-## 12. Changelog
+## 13. Changelog
+
+### ver 1.1.7 — 2026-09-17
+- **Fixed:** NURL notification processing could take up to ~20 seconds even though the gateway itself received its acknowledgement in ~500ms. Root cause: the actual order status update ran as an Action Scheduler background job, which depends on WP-Cron "picking it up" via a separate HTTP loopback request - this pickup delay alone could add several seconds, and much more under load or when a security plugin/firewall throttles loopback requests. `process_nurl()` now responds `OK` to the gateway directly via `fastcgi_finish_request()` (or `litespeed_finish_request()` on LiteSpeed), closing the HTTP connection immediately, and then continues processing the notification **in that same PHP request** - with no dependency on WP-Cron/Action Scheduler at all. On servers where these functions are unavailable (e.g. classic mod_php), the plugin automatically falls back to the previous Action Scheduler based processing.
+- **Fixed:** the "payment is being processed..." notice could remain shown (with the page auto-refreshing indefinitely) for up to 10 minutes even though the NURL notification had already been fully processed and the order status updated long ago. Root cause: a race condition between the RURL redirect (customer's browser) and the NURL notification (server-to-server), which can run as concurrent requests for the same order - see Section 6.6 for the technical details of the fix.
+
+### ver 1.1.6 — 2026-09-17
+- **Fixed:** the "payment is being processed..." notice on the order-received/view-order pages was never actually showing up. Root cause: `Woo_24pay_Gateway` is instantiated more than once per request in practice - once by WooCommerce itself (when it loads the list of available payment gateways) and once more by this plugin's own `init`-hooked listener (which needs an instance to detect RURL/NURL requests on every request). Each instantiation's constructor re-registered the very same WordPress hooks, so `woocommerce_before_thankyou` / `woocommerce_thankyou_24pay_gateway` fired twice, opening two nested output buffers - the second `ob_end_clean()` call discarded the notice the first call had just printed. Hook registration is now guarded to happen only once per request, no matter how many times the class gets instantiated.
+
+### ver 1.1.5 — 2026-09-16
+- NURL notifications are now acknowledged to the gateway immediately after signature validation; the actual order status update (payment_complete/emails/stock/hooks) is moved to a background job (Action Scheduler), preventing slow responses and gateway timeouts. Automatic fallback to synchronous processing if Action Scheduler is unavailable.
+- Added idempotency for NURL notifications: duplicate/retried notifications (same `PspTxnId` + `Result`) are detected via order meta (`_24pay_processed_notifications`) and safely ignored.
+- Added an atomic per-order lock (WordPress option-based, no custom DB table) to serialize concurrent NURL notifications for the same order.
+- Added a state-machine guard (order meta `_24pay_last_result`) that prevents an out-of-order/delayed notification from moving the order status backwards.
+- Added retry/backoff to `Order_Number_Resolver::resolve()` to correctly handle notifications that arrive before the order is fully committed/visible in the database.
+- Fixed a fatal error that occurred when a NURL notification referenced an order that could not be resolved.
+- Fixed a missing `die()` after an invalid/failed NURL response, which previously caused the rest of the page to be rendered after the `FAIL` response body.
+- `WOO_24pay_NurlParser::$pspTxnId` visibility changed from `private` to `public` (required for the idempotency logic above; the property is now consistent with `$msTxnId` and `$result`).
 
 ### ver 1.1.4 — 2026-07-30
 - Added dedicated RURL settings per currency (EUR/CZK/PLN/HUF)
@@ -276,7 +345,7 @@ The plugin declares compatibility with WooCommerce High-Performance Order Storag
 
 ---
 
-## 13. Test History
+## 14. Test History
 
 | WooCommerce | WordPress |
 |-------------|-----------|
