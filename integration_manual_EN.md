@@ -270,6 +270,8 @@ The plugin declares compatibility with WooCommerce High-Performance Order Storag
 | `woo-24pay-formbuilder.php` | `WOO_24pay_FormBuilder` | Renders auto-submitting hidden-field HTML form |
 | `woo-24pay-nurlparser.php` | `WOO_24pay_NurlParser` | Parses XML notification from gateway via SimpleXMLElement |
 | `woo-24pay-orderresolver.php` | `Order_Number_Resolver` | Resolves any custom order number to an internal WC order ID |
+| `woo-24pay-blocks.php` | `WOO_24pay_Blocks_Support` | Registers the gateway in the block-based checkout |
+| `assets/js/blocks.js` | – | Frontend registration of the payment method in the block checkout |
 
 ---
 
@@ -277,6 +279,7 @@ The plugin declares compatibility with WooCommerce High-Performance Order Storag
 
 ### 12.1 Payment method not visible at checkout
 → Disable any page builder plugin on the checkout page (Elementor, Divi, etc.).
+→ With the block-based checkout make sure you run v1.1.8 or later and that the `assets/js/blocks.js` file is present in the plugin directory.
 
 ### 12.2 Order status not updated after payment
 → Check that the NURL registered with 24pay **exactly** matches the NURL setting (including trailing slash and http/https scheme).
@@ -305,6 +308,9 @@ The plugin declares compatibility with WooCommerce High-Performance Order Storag
 ---
 
 ## 13. Changelog
+
+### ver 1.1.8 — 2026-10-09
+- **Added:** support for the block-based WooCommerce checkout (Cart & Checkout Blocks) in addition to the classic checkout. Declared `cart_checkout_blocks` compatibility and registered a payment method integration. Payment flow, RURL/NURL and asynchronous notification processing are unchanged.
 
 ### ver 1.1.7 — 2026-09-17
 - **Fixed:** NURL notification processing could take up to ~20 seconds even though the gateway itself received its acknowledgement in ~500ms. Root cause: the actual order status update ran as an Action Scheduler background job, which depends on WP-Cron "picking it up" via a separate HTTP loopback request - this pickup delay alone could add several seconds, and much more under load or when a security plugin/firewall throttles loopback requests. `process_nurl()` now responds `OK` to the gateway directly via `fastcgi_finish_request()` (or `litespeed_finish_request()` on LiteSpeed), closing the HTTP connection immediately, and then continues processing the notification **in that same PHP request** - with no dependency on WP-Cron/Action Scheduler at all. On servers where these functions are unavailable (e.g. classic mod_php), the plugin automatically falls back to the previous Action Scheduler based processing.

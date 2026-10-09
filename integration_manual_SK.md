@@ -1,6 +1,6 @@
 # 24pay Platobná brána pre WooCommerce — Integračný manuál
 
-**Verzia:** 1.1.7
+**Verzia:** 1.1.8
 **Licencia:** MIT
 **Autor:** 24pay (https://www.24-pay.sk)
 **Posledné testovanie:** WC 10.8.1 / WP 7.0
@@ -258,6 +258,10 @@ Hľadajte meta kľúč, ktorý obsahuje vaše vlastné číslo objednávky. Po n
 
 Plugin deklaruje kompatibilitu s WooCommerce High-Performance Order Storage (HPOS / custom_order_tables) cez `FeaturesUtil::declare_compatibility()` na hooku `before_woocommerce_init`.
 
+### 10.1 Podpora blokovej pokladne
+
+Od verzie 1.1.8 brána funguje v klasickej pokladni (shortcode `[woocommerce_checkout]`) aj v blokovej pokladni (Cart & Checkout Blocks). Plugin deklaruje kompatibilitu `cart_checkout_blocks` a na hooku `woocommerce_blocks_loaded` registruje integráciu platobnej metódy (`woo-24pay-blocks.php` + `assets/js/blocks.js`). Integrácia rieši iba zobrazenie metódy (názov, popis, ikona) — spracovanie platby, RURL/NURL a asynchrónne spracovanie notifikácií (Sekcia 6) sú spoločné pre oba typy pokladne a nezmenené. Ak WooCommerce Blocks nie je dostupné, integrácia sa preskočí a plugin funguje ako doteraz.
+
 ---
 
 ## 11. Štruktúra súborov
@@ -270,6 +274,8 @@ Plugin deklaruje kompatibilitu s WooCommerce High-Performance Order Storage (HPO
 | `woo-24pay-formbuilder.php` | `WOO_24pay_FormBuilder` | Generuje auto-submitujúci HTML formulár so skrytými poľami |
 | `woo-24pay-nurlparser.php` | `WOO_24pay_NurlParser` | Parsuje XML notifikáciu z brány cez SimpleXMLElement |
 | `woo-24pay-orderresolver.php` | `Order_Number_Resolver` | Prekladá akékoľvek vlastné číslo objednávky na interné WC ID |
+| `woo-24pay-blocks.php` | `WOO_24pay_Blocks_Support` | Registruje bránu v blokovej pokladni |
+| `assets/js/blocks.js` | – | Frontendová registrácia platobnej metódy v blokovej pokladni |
 
 ---
 
@@ -277,6 +283,7 @@ Plugin deklaruje kompatibilitu s WooCommerce High-Performance Order Storage (HPO
 
 ### 12.1 Platobná metóda nie je viditeľná pri pokladni
 → Vypni page builder plugin na stránke pokladne (Elementor, Divi a pod.).
+→ Pri blokovej pokladni over, že používaš verziu 1.1.8 alebo novšiu a že súbor `assets/js/blocks.js` existuje v adresári pluginu.
 
 ### 12.2 Stav objednávky sa neaktualizuje po platbe
 → Skontroluj, že NURL zaregistrovaná v 24pay **presne** zodpovedá nastaveniu NURL (vrátane lomky na konci a schémy http/https).
@@ -305,6 +312,9 @@ Plugin deklaruje kompatibilitu s WooCommerce High-Performance Order Storage (HPO
 ---
 
 ## 13. Changelog
+
+### ver 1.1.8 — 2026-10-09
+- **Pridané:** podpora blokovej pokladne WooCommerce (Cart & Checkout Blocks) popri klasickej pokladni. Deklarovaná kompatibilita `cart_checkout_blocks` a registrovaná integrácia platobnej metódy. Priebeh platby, RURL/NURL a asynchrónne spracovanie notifikácií zostali nezmenené.
 
 ### ver 1.1.7 — 2026-09-17
 - **Opravené:** spracovanie NURL notifikácie mohlo trvať až ~20 sekúnd, aj keď samotné potvrdenie bráne prišlo do ~500ms. Príčina: skutočná aktualizácia stavu objednávky bežala ako úloha Action Scheduler na pozadí, ktorá závisí od toho, kedy ju „vyzdvihne" WP-Cron (cez samostatný HTTP loopback request) — toto samotné oneskorenie mohlo predstavovať niekoľko sekúnd, a pri vyššom zaťažení servera alebo blokovaní loopback requestov bezpečnostným pluginom/firewallom výrazne viac. `process_nurl()` teraz odpovie bráne `OK` priamo cez `fastcgi_finish_request()` (na LiteSpeed cez `litespeed_finish_request()`), čím sa HTTP spojenie okamžite uzavrie, a **v tom istom PHP requeste** ihneď pokračuje spracovaním notifikácie — bez akejkoľvek závislosti na WP-Cron/Action Scheduler. Na serveroch, kde tieto funkcie nie sú dostupné (napr. klasický mod_php), sa automaticky použije pôvodné spracovanie cez Action Scheduler.

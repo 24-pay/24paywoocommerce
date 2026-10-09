@@ -163,10 +163,15 @@ The plugin declares compatibility with WooCommerce High-Performance Order Storag
 | `woo-24pay-formbuilder.php` | `WOO_24pay_FormBuilder` | Renders auto-submitting hidden-field HTML form |
 | `woo-24pay-nurlparser.php` | `WOO_24pay_NurlParser` | Parses XML notification from gateway via SimpleXMLElement |
 | `woo-24pay-orderresolver.php` | `Order_Number_Resolver` | Resolves any custom order number to an internal WC order ID |
+| `woo-24pay-blocks.php` | `WOO_24pay_Blocks_Support` | Registers the gateway in the block-based checkout |
+| `assets/js/blocks.js` | – | Frontend registration of the payment method in the block checkout |
 
 ---
 
 == Changelog ==
+
+= ver 1.1.8 = [09.10.2026]
+- Added: support for the block-based WooCommerce checkout (Cart & Checkout Blocks) in addition to the classic checkout. Declared `cart_checkout_blocks` compatibility and registered a payment method integration. Payment flow, RURL/NURL and asynchronous notification processing are unchanged.
 
 = ver 1.1.7 = [17.09.2026]
 - Fixed: NURL notification processing could take up to ~20 seconds even though the gateway received its acknowledgement in ~500ms. Root cause: the actual order status update ran as an Action Scheduler background job, which depends on WP-Cron being triggered (via a loopback HTTP request) - this "pickup delay" alone could take several seconds, and much longer under load or when a security plugin/firewall throttles loopback requests. `process_nurl()` now responds "OK" to the gateway via `fastcgi_finish_request()` (or `litespeed_finish_request()` on LiteSpeed) and then continues processing the notification in the very same PHP request/process, completely bypassing the WP-Cron/Action Scheduler round-trip. Falls back to the previous Action Scheduler based background processing on servers where these functions are unavailable (e.g. classic mod_php).

@@ -4,7 +4,7 @@ Plugin Name: Woocommerce 24pay Payment gateway
 Plugin URI: http://www.24-pay.sk
 Description: 24pay Payment Gateway for WooCommerce e-shop.
 Author: 24pay
-Version: 1.1.7
+Version: 1.1.8
 Author URI: https://www.24-pay.sk
 License: MIT
 */
@@ -47,8 +47,20 @@ add_action( 'plugins_loaded', 'woo_24pay_gateway_init', 11 );
 add_action('before_woocommerce_init', function(){
     if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
         \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, true );
     }
 });
+
+// Checkout Block support - registration only, no effect on payment/NURL processing.
+add_action( 'woocommerce_blocks_loaded', function () {
+	if ( ! class_exists( '\Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
+		return;
+	}
+	require_once PLUGIN_PATH_24PAY . 'woo-24pay-blocks.php';
+	add_action( 'woocommerce_blocks_payment_method_type_registration', function ( $registry ) {
+		$registry->register( new WOO_24pay_Blocks_Support() );
+	} );
+} );
 
 function woo_24pay_gateway_init() {
 
