@@ -1,6 +1,6 @@
 == 24pay Payment Gateway for WooCommerce ==
 
-Version: 1.1.7
+Version: 1.1.8
 License: MIT
 Author: 24pay (https://www.24-pay.sk)
 Tested: WC 10.8.1 / WP 7.0
